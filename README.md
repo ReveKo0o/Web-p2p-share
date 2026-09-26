@@ -1,6 +1,6 @@
 # Web-P2P-Share
 
-<img width="1029" height="502" alt="image" src="https://github.com/user-attachments/assets/8e2bc066-fa99-4909-a096-7e116c4fa54f" />
+<img width="878" height="454" alt="image" src="https://github.com/user-attachments/assets/c3594191-dc16-4371-8886-2692553f2a63" />
 
 
 A lightweight, serverless, and secure P2P (Peer-to-Peer) file transfer web application built with WebRTC (via PeerJS). Share files instantly between any devices across the internet without any intermediary server storage.
