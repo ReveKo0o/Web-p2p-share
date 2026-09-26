@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P2P File Transfer</title>
+  <!-- Peer.js library -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    body {
+      background-color: #a095b3;
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 650px;
+      background: #0f0f0f;
+      border-radius: 8px;
+      padding: 20px;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    header {
+      grid-column: 1 / -1;
+      text-align: center;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #1a1a1a;
+      padding-bottom: 10px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+
+    header .highlight {
+      color: #ff00ff;
+      text-shadow: 0 0 8px #ff00ff;
+    }
+
+    header p {
+      font-size: 10px;
+      color: #666;
+      margin: 5px 0 0 0;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 11px;
+      color: #aaa;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .my-id-box {
+      background: #151515;
+      border: 1px dashed #444;
+      padding: 8px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 11px;
+      color: #ff00ff;
+      word-break: break-all;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 5px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+
+    input[type="text"]:focus {
+      border-color: #ff00ff;
+      outline: none;
+    }
+
+    .status-box {
+      font-size: 10px;
+      color: #888;
+      background: #080808;
+      padding: 8px;
+      border-radius: 4px;
+      text-align: center;
+      border: 1px solid #1a1a1a;
+    }
+
+    button {
+      background: #ff00ff;
+      color: #000;
+      border: none;
+      font-weight: bold;
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #d000d0;
+      box-shadow: 0 0 8px #ff00ff;
+    }
+
+    button:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .action-btn {
+      width: 100%;
+    }
+
+    .info-box {
+      font-size: 9px;
+      color: #555;
+      line-height: 1.2;
+    }
+
+    #progressText {
+      font-size: 10px;
+      text-align: center;
+      color: #00ffcc;
+      margin-top: 5px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>P2P File Share<span class=</span>
+      
+    </header>
+
+    <!-- Connection and sending files -->
+    <div class="panel">
+      <div>
+        <label>Your id (double click for copy):</label>
+        <div class="my-id-box" id="myId" title="Kopyala">Connecting...</div>
+      </div>
+
+      <div class="status-box" id="statusText">Connectig to the server...</div>
+
+      <div>
+        <input type="file" id="fileInput" style="display: none;">
+        <button id="selectFileBtn" class="action-btn" disabled>Select file and send</button>
+        <div id="progressText"></div>
+      </div>
+    </div>
+
+    <!-- Manuel connection -->
+    <div class="panel">
+      <label>Connect to device</label>
+      <div class="input-group">
+        <input type="text" id="targetIdInput" placeholder="Write down the other device code...">
+        <button id="connectBtn">Connect>
+      </div>
+      <div class="info-box">
+        * Open the site from your phone and computer. Instantly set up a P2P tunnel and transfer files by typing the other device's ID code here.
+        
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Generate a random id with starting "cs_"
+    const myPeerId = "cs_" + Math.random().toString(36).substring(2, 8);
+    
+    // Peer object
+    const peer = new Peer(myPeerId);
+
+    const myIdEl = document.getElementById('myId');
+    const statusText = document.getElementById('statusText');
+    const selectFileBtn = document.getElementById('selectFileBtn');
+    const fileInput = document.getElementById('fileInput');
+    const progressText = document.getElementById('progressText');
+    const targetIdInput = document.getElementById('targetIdInput');
+    const connectBtn = document.getElementById('connectBtn');
+
+    let conn = null;
+
+    peer.on('open', (id) => {
+      myIdEl.textContent = id;
+      statusText.textContent = "Status: Connected";
+    });
+
+    peer.on('error', (err) => {
+      statusText.textContent = "Error: " + err.type;
+      myIdEl.textContent = "Not Connected";
+    });
+
+    // When the different device connected to your machine/device 
+    peer.on('connection', (connection) => {
+      conn = connection;
+      setupConnection();
+      statusText.textContent = `Connect -> ${conn.peer}`;
+      selectFileBtn.disabled = false;
+    });
+
+    // Clicked on Connect button
+    connectBtn.addEventListener('click', () => {
+      const targetId = targetIdInput.value.trim();
+      if (!targetId) return;
+
+      statusText.textContent = `Connecting: ${targetId}...`;
+      conn = peer.connect(targetId);
+      
+      conn.on('open', () => {
+        statusText.textContent = `Connected -> ${conn.peer}`;
+        selectFileBtn.disabled = false;
+        setupConnection();
+      });
+
+      conn.on('error', () => {
+        statusText.textContent = "Conenction issuse";
+      });
+    });
+
+    function setupConnection() {
+      conn.on('data', (data) => {
+        if (data.file) {
+          progressText.textContent = `Recieving: ${data.name}`;
+          const blob = new Blob([data.file]);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = data.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          progressText.textContent = `Downloaded: ${data.name}`;
+        }
+      });
+
+      conn.on('close', () => {
+        statusText.textContent = "Connection closed";
+        selectFileBtn.disabled = true;
+      });
+    }
+
+    // Copy the id when clicked
+    myIdEl.addEventListener('click', () => {
+      if (myIdEl.textContent.startsWith('cs_')) {
+        navigator.clipboard.writeText(myIdEl.textContent);
+        alert("Kimlik Kopyalandı: " + myIdEl.textContent);
+      }
+    });
+
+    selectFileBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file || !conn) return;
+
+      progressText.textContent = `Sending: ${file.name}...`;
+
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = (event) => {
+        conn.send({
+          file: event.target.result,
+          name: file.name,
+          type: file.type
+        });
+        progressText.textContent = `Sended: ${file.name}`;
+      };
+    });
+  </script>
+</body>
+</html>
